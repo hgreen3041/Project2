@@ -59,6 +59,8 @@ while True:
     b = utime.ticks_us() - a
     a = utime.ticks_us()
     LP = b/(1000000*1.0)
+    print("LP: ", LP)
+    print("b: ", b)
     outputString = "Loop Time %5.3f " % ( LP )
 
 
@@ -92,12 +94,26 @@ while True:
     
     if 0:                       #Change to '0' to stop showing the angles from the accelerometer
         outputString += "#  ACCX Angle %5.2f ACCY Angle %5.2f  #  " % (AccXangle, AccYangle)
+        print(outputString)
 
-    if 0:                       #Change to '0' to stop  showing the angles from the gyro
+    if 1:                       #Change to '0' to stop  showing the angles from the gyro
         outputString +="\t# GRYX Angle %5.2f  GYRY Angle %5.2f  GYRZ Angle %5.2f # " % (gyroXangle,gyroYangle,gyroZangle)
+        print(outputString)
 
-    if 1:                       #Change to '0' to stop  showing the angles from the complementary filter
+    if 0:                       #Change to '0' to stop  showing the angles from the complementary filter
         outputString +="\t#  CFangleX Angle %5.2f   CFangleY Angle %5.2f  #" % (CFangleX,CFangleY)
+        print(outputString)
+    
+    if 0: 
+        print(f"X = {(((ACCx * 0.12)/1000)*9.80665)}" + f"\tY = {(((ACCy * 0.12)/1000)*9.80665)}" +  f"\tZ = {(((ACCz * 0.12)/1000)*9.80665)} m/S^2")
+        
+        utime.sleep(.1)
+        # print(f"X = {(((ACCx * 0.244)/1000)*9.80665)} m/S^2")
+        # print(f"Y = {(((ACCy * 0.244)/1000)*9.80665)} m/S^2")
+        # print(f"Z = {(((ACCz * 0.244)/1000)*9.80665)} m/S^2")
+        # print("##### X = %f G  #####" % (((ACCx * 0.244)/1000)*9.80665))
+        # print(" Y =   %fG  #####" % (((ACCy * 0.244)/1000)*9.80665))
+        # print(" Z =  %fG  #####" % (((ACCz * 0.244)/1000)*9.80665))
 
 
-    print(outputString)
+    
