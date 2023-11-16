@@ -1,58 +1,85 @@
-import machine
+from machine import Pin, UART, SPI
 import sdcard
 import uos
 import time
 
-# Assign chip select (CS) pin (and start it high)
+# GPS setup
+led_pin = Pin(25, Pin.OUT)
+uart = UART(0, baudrate=9600, tx=0, rx=1)
+
+# SD card setup
 cs = machine.Pin(9, machine.Pin.OUT)
-
-# Intialize SPI peripheral (start with 1 MHz)
-spi = machine.SPI(1,
-                  baudrate=1000000,
-                  polarity=0,
-                  phase=0,
-                  bits=8,
-                  firstbit=machine.SPI.MSB,
-                  sck=machine.Pin(10),
-                  mosi=machine.Pin(11),
-                  miso=machine.Pin(8))
-
-# Initialize SD card
+spi = machine.SPI(1, baudrate=1000000, polarity=0, phase=0, bits=8, firstbit=machine.SPI.MSB, sck=machine.Pin(10), mosi=machine.Pin(11), miso=machine.Pin(8))
 sde = sdcard.SDCard(spi, cs)
-
-# Mount filesystem
 vfs = uos.VfsFat(sde)
 uos.mount(vfs, "/sde")
 
-# Generate a unique filename using current date and time
-current_time = time.localtime()
-filename = "/sde/data_{}_{}_{}_{}_{}_{}.csv".format(current_time[0], current_time[1], 
-                                                   current_time[2], current_time[3], 
-                                                   current_time[4], current_time[5])
+# Initialize variables for GPS data
+gps_time = ""
+gps_date = ""
+latitude = ""
+longitude = ""
+num_satellites = ""
 
-# Open the file in 'a' (append) mode
-with open(filename, "a") as file:
-    # Write header if the file is empty (only once)
-    if file.tell() == 0:
-        file.write("latitude,longitude,elevation,satellites,angular_velocity,acceleration,magnetic_field\n")
+# Function to get a unique filename based on GPS time
+def get_filename():
+    if gps_time and gps_date:
+        # Format: gps_data_DDMMYY_HHMMSS.csv
+        filename = "/sde/gps_data_{}_{}_{}_{}_{}_{}.csv".format(
+            gps_date[0:2], gps_date[2:4], gps_date[4:6],  # Day, Month, Year
+            gps_time[0:2], gps_time[2:4], gps_time[4:6]   # Hour, Minute, Second
+        )
+        return filename
+    else:
+        # Fallback filename if GPS time and date are not available
+        return "/sde/gps_data_unknown.csv"
 
-    # Main loop for continuous data logging
-    for a in range(10):
-        # Read sensor data here
-        # Replace the following with actual data from your sensors
-        latitude = 69
-        longitude = 56.78   
-        elevation = 100
-        satellites = 8
-        angular_velocity = 0.1
-        acceleration = 9.8
-        magnetic_field = 40
+# Function to send AT commands
+def send_at_command(command):
+    uart.write(command + b'\r\n')  # Send the command with a newline character
+    response = uart.read()  # Read the response (adjust buffer size as needed)
+    if response:
+        print(response.decode())
 
-        # Write data to CSV
-        file.write(f"{latitude},{longitude},{elevation},{satellites},{angular_velocity},{acceleration},{magnetic_field}\n")
+# Function to parse GPGGA sentence
+def parse_gpgga(gpgga_sentence):
+    global gps_time, latitude, longitude, num_satellites
+    try:
+        parts = gpgga_sentence.decode('ascii', 'ignore').split(',')
+        if len(parts) >= 10 and parts[6] != '0':  # Checking for a valid fix
+            gps_time = parts[1]
+            latitude = parts[2] + " " + parts[3]
+            longitude = parts[4] + " " + parts[5]
+            num_satellites = parts[7]
+            gps_date = ""  # You can assign the date here if available in GPGGA
+    except UnicodeError:
+        print("UnicodeError: Could not parse GPGGA sentence")
 
-        # Wait for a short period to control the sampling rate
-        time.sleep(1)  # Adjust the sleep duration as needed
+# Main loop
+while True:
+    led_pin.toggle()
+    
+    if uart.any():
+        data = uart.read(256)
+        if data:
+            data_str = data.decode('ascii', 'ignore')  # Convert the data to a string and ignore invalid characters
+            print(data_str)
 
-# Unmount the filesystem
+            # Split the string into lines and process each line
+            for line in data_str.split('\n'):
+                line = line.strip()
+                if line.startswith('$GPGGA'):
+                    parse_gpgga(line.encode('ascii'))  # Encode back to bytes
+
+    # Write GPS data to SD card
+    filename = get_filename()
+    with open(filename, "a") as file:
+        if file.tell() == 0:
+            # Write header to new file
+            file.write("Time, Latitude, Longitude, Num Satellites\n")
+        file.write(f"{gps_time}, {latitude}, {longitude}, {num_satellites}\n")
+    
+    time.sleep(1)
+
+# Unmount filesystem when done
 uos.unmount("/sde")
