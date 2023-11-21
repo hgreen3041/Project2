@@ -68,8 +68,8 @@ ERROR_8                            = b"ER+8\r\n"
 # Bluetooth connection detection pin
 BLE_MODE_PIN = Pin(15 , Pin.IN , Pin.PULL_UP)
 
-uart = UART(0, baudrate=115200, tx=Pin(0), rx=Pin(1))
-# uart = UART(1, baudrate=115200, tx=Pin(4), rx=Pin(5))
+# uart = UART(0, baudrate=115200, tx=Pin(0), rx=Pin(1))
+uart = UART(1, baudrate=115200, tx=Pin(4), rx=Pin(5))
 
 
 

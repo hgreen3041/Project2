@@ -15,7 +15,7 @@ MicroPython Driver for the ST LIS3MDL magnetometer
 
 import time
 from micropython import const
-from micropython_lis3mdl.i2c_helpers import CBits, RegisterStruct
+from i2c_helpers import CBits, RegisterStruct
 
 try:
     from typing import Tuple
@@ -194,6 +194,7 @@ class LIS3MDL:
             "RATE_560_HZ",
             "RATE_1000_HZ",
         )
+        
         return values[self._data_rate]
 
     @data_rate.setter
