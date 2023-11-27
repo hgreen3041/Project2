@@ -16,6 +16,10 @@ lis = lis3mdl.LIS3MDL(i2c)
 lis.operation_mode = lis3mdl.POWER_DOWN
 IMU.initIMU()       #Initialise the accelerometer, gyroscope and compass
 
+
+
+
+# Reads and returns the IMU data formatted as a string
 def readIMU():
     G_GAIN = 0.070  # [deg/s/LSB]  If you change the dps for gyro, you need to update this value accordingly
     DEG_TO_RAD = 1/57.2958
@@ -43,6 +47,7 @@ def readIMU():
     acc = f"X={(((ACCx * 0.12)/1000)*9.80665):0.2f}" + f"\tY={(((ACCy * 0.12)/1000)*9.80665):0.2f}" +  f"\tZ={(((ACCz * 0.12)/1000)*9.80665):0.2f} m/S^2"
     return gyr, mag, acc
 
+# Reads the GPS data
 def readGPSData():
         ledPin = Pin(25, Pin.out)
         ledPin.toggle()
@@ -156,6 +161,8 @@ try:
         print("Longitude: ", longitude)
         print("Elevation: ", elevation)
         print("# of satellites: ", satellites)
+
+
 
         # Append the data line to the current CSV file
         with open(current_csv_file, 'a') as f:
