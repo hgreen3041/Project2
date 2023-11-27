@@ -17,13 +17,8 @@ lis.operation_mode = lis3mdl.POWER_DOWN
 IMU.initIMU()       #Initialise the accelerometer, gyroscope and compass
 
 def readIMU():
-    
-
-
     G_GAIN = 0.070  # [deg/s/LSB]  If you change the dps for gyro, you need to update this value accordingly
     DEG_TO_RAD = 1/57.2958
-
-
     ACCx = IMU.readACCx()
     ACCy = IMU.readACCy()
     ACCz = IMU.readACCz()
@@ -47,6 +42,18 @@ def readIMU():
     mag = f"X={magx:0.2f}\tY={magy:0.2f}\tZ={magz:0.2f} uT"
     acc = f"X={(((ACCx * 0.12)/1000)*9.80665):0.2f}" + f"\tY={(((ACCy * 0.12)/1000)*9.80665):0.2f}" +  f"\tZ={(((ACCz * 0.12)/1000)*9.80665):0.2f} m/S^2"
     return gyr, mag, acc
+
+def readGPSData():
+        ledPin = Pin(25, Pin.out)
+        ledPin.toggle()
+        # Read GPS data
+        if uart.any():
+            gps_data = uart.read(256).decode('utf-8', 'ignore')
+            for line in gps_data.split('\r\n'):
+                if line.startswith('$GPGGA'):
+                    parse_gpgga(line.encode('ascii'))
+                elif line.startswith('$GPRMC'):
+                    parse_gprmc(line.encode('ascii'))
 
 
 # GPS Data Variables
