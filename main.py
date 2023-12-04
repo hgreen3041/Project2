@@ -10,16 +10,17 @@ import IMU_I2C as IMU
 
 # Define UART and GPIO pin settings for GPS
 led_pin = Pin(25, Pin.OUT)
-uart = UART(0, baudrate=9600, tx=Pin(0), rx=Pin(1))
+uart = UART(1, baudrate=9600, tx=Pin(4), rx=Pin(5))
 i2c = I2C(1, sda=Pin(2), scl=Pin(3))  # Correct I2C pins for RP2040
 lis = lis3mdl.LIS3MDL(i2c)
 lis.operation_mode = lis3mdl.POWER_DOWN
 IMU.initIMU()       #Initialise the accelerometer, gyroscope and compass
 
+# Setup bluetooth module
+BLE_MODE_PIN = Pin(15 , Pin.IN , Pin.PULL_UP)
+uart2 = UART(0, baudrate=115200, tx=Pin(0), rx=Pin(1))
 
 
-
-# Reads and returns the IMU data formatted as a string
 def readIMU():
     G_GAIN = 0.070  # [deg/s/LSB]  If you change the dps for gyro, you need to update this value accordingly
     DEG_TO_RAD = 1/57.2958
@@ -47,7 +48,6 @@ def readIMU():
     acc = f"X={(((ACCx * 0.12)/1000)*9.80665):0.2f}" + f"\tY={(((ACCy * 0.12)/1000)*9.80665):0.2f}" +  f"\tZ={(((ACCz * 0.12)/1000)*9.80665):0.2f} m/S^2"
     return gyr, mag, acc
 
-# Reads the GPS data
 def readGPSData():
         ledPin = Pin(25, Pin.out)
         ledPin.toggle()
@@ -141,34 +141,47 @@ current_csv_file = create_new_csv()
 try: 
     # Main loop
     while True:
-        gyro, magField, acc = readIMU()
-        led_pin.toggle()
-        # Read GPS data
-       
-        if uart.any():
-            gps_data = uart.read(256).decode('utf-8', 'ignore')
-            for line in gps_data.split('\r\n'):
-                if line.startswith('$GPGGA'):
-                    parse_gpgga(line.encode('ascii'))
-                elif line.startswith('$GPRMC'):
-                    parse_gprmc(line.encode('ascii'))
-
-        # Construct CSV data line
-        # current_time = time.localtime()
-        # timestamp = "{:04d}-{:02d}-{:02d} {:02d}:{:02d}:{:02d}".format(current_time[0], current_time[1], current_time[2], current_time[3], current_time[4], current_time[5])
-        csv_line = f"{gps_date}, {gps_time}, {latitude}, {longitude}, {elevation}, {satellites}, {gyro}, {acc}, {magField}\n"
-        print("Latitude: ", latitude)
-        print("Longitude: ", longitude)
-        print("Elevation: ", elevation)
-        print("# of satellites: ", satellites)
-
-
-
-        # Append the data line to the current CSV file
-        with open(current_csv_file, 'a') as f:
-            f.write(csv_line)
+        try:
+            bufferPacket = ""
+            gyro, magField, acc = readIMU()
+            led_pin.toggle()
+            # Read GPS data
         
-        time.sleep(1)
+            if uart.any():
+                gps_data = uart.read(256).decode('utf-8', 'ignore')
+                for line in gps_data.split('\r\n'):
+                    if line.startswith('$GPGGA'):
+                        parse_gpgga(line.encode('ascii'))
+                    elif line.startswith('$GPRMC'):
+                        parse_gprmc(line.encode('ascii'))
+
+            # Construct CSV data line
+            # current_time = time.localtime()
+            # timestamp = "{:04d}-{:02d}-{:02d} {:02d}:{:02d}:{:02d}".format(current_time[0], current_time[1], current_time[2], current_time[3], current_time[4], current_time[5])
+            
+            csv_line = f"{gps_date}, {gps_time}, {latitude}, {longitude}, {elevation}, {satellites}, {gyro}, {acc}, {magField}\n"
+            print("Latitude: ", latitude)
+            print("Longitude: ", longitude)
+            print("Elevation: ", elevation)
+            print("# of satellites: ", satellites)
+            print("\n")
+
+            if( BLE_MODE_PIN.value() == 0):
+                print("Bluetooth Reciever Not Currently Connected")
+            if( BLE_MODE_PIN.value() == 1):
+                print("Bluetooth Reciever Connected")  
+                uart2.write(f"{gps_date}&{gps_time}&{latitude}&{longitude}&{elevation}&{satellites}&{gyro}&{acc}&{magField}&{bufferPacket}\n")
+                
+
+
+            # Append the data line to the current CSV file
+            with open(current_csv_file, 'a') as f:
+                f.write(csv_line)
+            
+            time.sleep(1)
+
+        except ValueError:
+            print("\nMissed acknowledgment from reciever, trying again...\n")
 
 except UnicodeError:
     print("GPS failed to start.")
